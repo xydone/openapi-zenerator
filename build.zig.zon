@@ -1,0 +1,17 @@
+.{
+    .name = .openapi_zenerator,
+
+    .version = "0.0.0",
+
+    .fingerprint = 0x70903a11ff6f3d6f,
+
+    .minimum_zig_version = "0.15.2",
+
+    .dependencies = .{},
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
