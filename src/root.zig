@@ -104,24 +104,39 @@ pub fn generate(alloc: std.mem.Allocator, comptime endpoint_data: anytype, optio
             };
 
             var tag_list = std.ArrayList([]const u8).empty;
-            if (@hasDecl(endpoint, "tags")) {
-                switch (@typeInfo(@TypeOf(endpoint.tags))) {
+            const is_type = @TypeOf(endpoint) == type;
+            const has_tags = comptime if (is_type)
+                @hasDecl(endpoint, "tags")
+            else
+                @hasField(@TypeOf(endpoint), "tags");
+
+            if (has_tags) {
+                const tags_val = if (is_type) endpoint.tags else endpoint.tags;
+
+                switch (@typeInfo(@TypeOf(tags_val))) {
                     .pointer => |ptr| {
                         if (ptr.size == .slice and ptr.child == u8) {
-                            try tag_list.append(allocator, endpoint.tags);
-                        }
-                    },
-                    .@"struct" => |s| {
-                        if (s.is_tuple) {
-                            inline for (endpoint.tags) |t| {
+                            try tag_list.append(tags_val);
+                        } else if (ptr.size == .slice and ptr.child == []const u8) {
+                            for (tags_val) |t| {
                                 try tag_list.append(allocator, t);
                             }
                         }
                     },
-
-                    .array => {
-                        if (@TypeOf(endpoint.tags) == []const u8 or @TypeOf(endpoint.tags) == []u8) {
-                            try tag_list.append(endpoint.tags);
+                    .@"struct" => |s| {
+                        if (s.is_tuple) {
+                            inline for (tags_val) |t| {
+                                try tag_list.append(allocator, t);
+                            }
+                        }
+                    },
+                    .array => |arr| {
+                        if (arr.child == u8) {
+                            try tag_list.append(&tags_val);
+                        } else if (arr.child == []const u8) {
+                            for (tags_val) |t| {
+                                try tag_list.append(allocator, t);
+                            }
                         }
                     },
                     else => {},
