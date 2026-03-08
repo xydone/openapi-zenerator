@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const test_module = b.addModule(NAME, .{
+    const test_module = b.createModule(.{
         .root_source_file = b.path("tests/integration.zig"),
         .target = target,
         .optimize = optimize,
