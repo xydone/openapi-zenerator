@@ -111,13 +111,42 @@ const UserDelete = struct {
     };
 };
 
+// tests for stringhashmap
+const UserMetadata = struct {
+    pub const path = "/users/:id/some-metadata";
+    pub const method = zenerator.Method.GET;
+    pub const tags = .{"users"};
+    pub const Request = struct {
+        pub const Params = struct {
+            id: u32,
+        };
+        pub const Query = struct {};
+        pub const Body = struct {};
+    };
+    pub const Response = std.StringHashMap([]const u8);
+};
+
+const UserCounts = struct {
+    pub const path = "/users/:id/count-for-something";
+    pub const method = zenerator.Method.GET;
+    pub const tags = .{"users"};
+    pub const Request = struct {
+        pub const Params = struct {
+            id: u32,
+        };
+        pub const Query = struct {};
+        pub const Body = struct {};
+    };
+    pub const Response = std.StringHashMap(u64);
+};
+
 const PostCreate = struct {
-    pub const path = "/users/:userId/posts";
+    pub const path = "/users/:user_id/posts";
     pub const method = zenerator.Method.POST;
     pub const tags = .{ "users", "posts" };
     pub const Request = struct {
         pub const Params = struct {
-            userId: u32,
+            user_id: u32,
         };
         pub const Query = struct {};
         pub const Body = struct {
@@ -142,6 +171,8 @@ pub const API = struct {
             UserCreate,
             UserUpdate,
             UserDelete,
+            UserMetadata,
+            UserCounts,
         },
         .{
             PostCreate,

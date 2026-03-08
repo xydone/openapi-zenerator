@@ -40,26 +40,38 @@ pub fn generate(alloc: std.mem.Allocator, comptime endpoint_data: anytype, optio
             var request_body: ?Path.Operation.RequestBody = null;
             var required = std.ArrayList([]const u8).empty;
 
-            if (@typeInfo(endpoint.Request.Body) == .@"struct") {
-                const @"struct" = @typeInfo(endpoint.Request.Body).@"struct";
-                inline for (@"struct".fields) |field| {
-                    if (@typeInfo(field.type) != .optional) try required.append(allocator, field.name);
-                    try schema_map.put(field.name, Schema.init(field.type, allocator));
-                }
-            }
-            if (schema_map.count() != 0) {
+            const body_type_info = @typeInfo(endpoint.Request.Body);
+            const is_body_map = body_type_info == .@"struct" and @hasDecl(endpoint.Request.Body, "KV") and @hasDecl(endpoint.Request.Body, "GetOrPutResult");
+
+            if (is_body_map) {
                 request_body = .{
                     .required = true,
                     .content = .{
                         .@"application/json" = .{
-                            .schema = .{
-                                .type = .object,
-                                .required = if (required.items.len != 0) try required.toOwnedSlice(allocator) else null,
-                                .properties = schema_map,
-                            },
+                            .schema = Schema.init(endpoint.Request.Body, allocator),
                         },
                     },
                 };
+            } else if (body_type_info == .@"struct") {
+                const @"struct" = body_type_info.@"struct";
+                inline for (@"struct".fields) |field| {
+                    if (@typeInfo(field.type) != .optional) try required.append(allocator, field.name);
+                    try schema_map.put(field.name, Schema.init(field.type, allocator));
+                }
+                if (schema_map.count() != 0) {
+                    request_body = .{
+                        .required = true,
+                        .content = .{
+                            .@"application/json" = .{
+                                .schema = .{
+                                    .type = .object,
+                                    .required = if (required.items.len != 0) try required.toOwnedSlice(allocator) else null,
+                                    .properties = schema_map,
+                                },
+                            },
+                        },
+                    };
+                }
             }
 
             if (@typeInfo(endpoint.Request.Params) == .@"struct") {
@@ -166,35 +178,42 @@ fn insertParameter(
     map: *std.StringHashMap(Path),
 ) !void {
     var responses = std.StringHashMap(Response).init(allocator);
-    var schema_map = std.StringHashMap(Schema).init(allocator);
 
-    switch (@typeInfo(ResponseT)) {
-        .@"struct" => |@"struct"| {
-            inline for (@"struct".fields) |field| {
-                try schema_map.put(field.name, Schema.init(field.type, allocator));
-            }
-        },
-        .pointer => |ptr| blk: {
-            if (ptr.size != .slice) break :blk;
-            inline for (@typeInfo(ptr.child).@"struct".fields) |field| {
-                try schema_map.put(field.name, Schema.init(field.type, allocator));
-            }
-        },
-        else => {},
-    }
+    const is_response_map = @typeInfo(ResponseT) == .@"struct" and @hasDecl(ResponseT, "KV") and @hasDecl(ResponseT, "GetOrPutResult");
 
-    const schema: Schema = switch (@typeInfo(ResponseT)) {
-        .@"struct" => Schema{ .properties = schema_map },
-        .pointer => blk: {
-            const items = try allocator.create(Schema);
-            items.* = Schema{
-                .type = .object,
-                .properties = schema_map,
-            };
+    const schema: Schema = if (is_response_map) blk: {
+        break :blk Schema.init(ResponseT, allocator);
+    } else blk: {
+        var schema_map = std.StringHashMap(Schema).init(allocator);
 
-            break :blk Schema{ .type = .array, .items = items };
-        },
-        else => .{},
+        switch (@typeInfo(ResponseT)) {
+            .@"struct" => |@"struct"| {
+                inline for (@"struct".fields) |field| {
+                    try schema_map.put(field.name, Schema.init(field.type, allocator));
+                }
+            },
+            .pointer => |ptr| {
+                if (ptr.size == .slice) {
+                    inline for (@typeInfo(ptr.child).@"struct".fields) |field| {
+                        try schema_map.put(field.name, Schema.init(field.type, allocator));
+                    }
+                }
+            },
+            else => {},
+        }
+
+        break :blk switch (@typeInfo(ResponseT)) {
+            .@"struct" => Schema{ .type = .object, .properties = schema_map },
+            .pointer => items_blk: {
+                const items = try allocator.create(Schema);
+                items.* = Schema{
+                    .type = .object,
+                    .properties = schema_map,
+                };
+                break :items_blk Schema{ .type = .array, .items = items };
+            },
+            else => .{},
+        };
     };
 
     try responses.put("200", Response{

@@ -12,6 +12,7 @@ maxLength: ?i64 = null,
 minLength: ?i64 = null,
 pattern: ?[]const u8 = null,
 items: ?*Schema = null,
+additionalProperties: ?*Schema = null,
 minProperties: ?i64 = null,
 required: ?[]const []const u8 = null,
 @"enum": ?[][]const u8 = null,
@@ -26,6 +27,17 @@ deprecated: ?bool = null,
 pub fn init(T: type, allocator: std.mem.Allocator) Schema {
     const @"type" = Types.parse(T);
     const type_info = @typeInfo(T);
+
+    const is_map = type_info == .@"struct" and @hasDecl(T, "KV") and @hasDecl(T, "GetOrPutResult");
+    if (is_map) {
+        const ValueType = @TypeOf(@as(T.KV, undefined).value);
+        const v_schema = allocator.create(Schema) catch @panic("OOM");
+        v_schema.* = Schema.init(ValueType, allocator);
+        return .{
+            .type = .object,
+            .additionalProperties = v_schema,
+        };
+    }
 
     return .{
         .type = @"type",
@@ -67,6 +79,22 @@ pub fn init(T: type, allocator: std.mem.Allocator) Schema {
                     .optional => @typeInfo(child_type_info.optional.child),
                     else => child_type_info,
                 };
+
+                const ChildT = switch (child_type_info) {
+                    .optional => child_type_info.optional.child,
+                    else => child_type,
+                };
+                const is_child_map = struct_info == .@"struct" and @hasDecl(ChildT, "KV") and @hasDecl(ChildT, "GetOrPutResult");
+                if (is_child_map) {
+                    const ValueType = @TypeOf(@as(ChildT.KV, undefined).value);
+                    const v_schema = allocator.create(Schema) catch @panic("OOM");
+                    v_schema.* = Schema.init(ValueType, allocator);
+                    schema.* = Schema{
+                        .type = .object,
+                        .additionalProperties = v_schema,
+                    };
+                    break :blk schema;
+                }
 
                 if (struct_info == .@"struct") {
                     inline for (struct_info.@"struct".fields) |field| {
