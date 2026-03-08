@@ -140,6 +140,25 @@ const UserCounts = struct {
     pub const Response = std.StringHashMap(u64);
 };
 
+// test for stringhashmap struct "unrolling"
+const UserStatuses = struct {
+    pub const path = "/users/:id/status";
+    pub const method = zenerator.Method.GET;
+    pub const tags = .{"users"};
+    pub const Request = struct {
+        pub const Params = struct {
+            id: u32,
+        };
+        pub const Query = struct {};
+        pub const Body = struct {};
+    };
+    pub const Status = struct {
+        lorem: bool,
+        ipsum: u64,
+    };
+    pub const Response = std.StringHashMap(Status);
+};
+
 const PostCreate = struct {
     pub const path = "/users/:user_id/posts";
     pub const method = zenerator.Method.POST;
@@ -173,6 +192,7 @@ pub const API = struct {
             UserDelete,
             UserMetadata,
             UserCounts,
+            UserStatuses,
         },
         .{
             PostCreate,

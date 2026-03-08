@@ -30,17 +30,29 @@ pub fn init(T: type, allocator: std.mem.Allocator) Schema {
 
     const is_map = type_info == .@"struct" and @hasDecl(T, "KV") and @hasDecl(T, "GetOrPutResult");
     if (is_map) {
-        const ValueType = @TypeOf(@as(T.KV, undefined).value);
-        const v_schema = allocator.create(Schema) catch @panic("OOM");
-        v_schema.* = Schema.init(ValueType, allocator);
-        return .{
+        const kv_type = @typeInfo(T.KV);
+        const value_type = kv_type.@"struct".fields[1].type;
+
+        const additional_props = allocator.create(Schema) catch @panic("OOM");
+        additional_props.* = Schema.init(value_type, allocator);
+
+        return Schema{
             .type = .object,
-            .additionalProperties = v_schema,
+            .additionalProperties = additional_props,
         };
     }
 
+    const properties: ?std.StringHashMap(Schema) = if (@"type" == .object and type_info == .@"struct") blk: {
+        var map = std.StringHashMap(Schema).init(allocator);
+        inline for (type_info.@"struct".fields) |field| {
+            map.put(field.name, Schema.init(field.type, allocator)) catch @panic("OOM");
+        }
+        break :blk map;
+    } else null;
+
     return .{
         .type = @"type",
+        .properties = properties,
         .@"enum" = if (type_info == .@"enum") blk: {
             var values = std.ArrayList([]const u8).empty;
             inline for (type_info.@"enum".fields) |field| {
