@@ -27,6 +27,7 @@ const SystemHealth = struct {
 const UserList = struct {
     pub const path = "/users";
     pub const method = zenerator.Method.GET;
+    pub const tags = .{"users"};
     pub const Request = struct {
         pub const Params = struct {};
 
@@ -44,6 +45,7 @@ const UserList = struct {
 const UserGet = struct {
     pub const path = "/users/:id";
     pub const method = zenerator.Method.GET;
+    pub const tags = .{"users"};
     pub const Request = struct {
         pub const Params = struct {
             id: u32,
@@ -57,6 +59,7 @@ const UserGet = struct {
 const UserCreate = struct {
     pub const path = "/users";
     pub const method = zenerator.Method.POST;
+    pub const tags = .{"users"};
     pub const Request = struct {
         pub const Params = struct {};
         pub const Query = struct {};
@@ -77,6 +80,7 @@ const UserCreate = struct {
 const UserUpdate = struct {
     pub const path = "/users/:id";
     pub const method = zenerator.Method.PATCH;
+    pub const tags = .{"users"};
     pub const Request = struct {
         pub const Params = struct {
             id: u32,
@@ -94,6 +98,7 @@ const UserUpdate = struct {
 const UserDelete = struct {
     pub const path = "/users/:id";
     pub const method = zenerator.Method.DELETE;
+    pub const tags = .{"users"};
     pub const Request = struct {
         pub const Params = struct {
             id: u32,
@@ -109,6 +114,7 @@ const UserDelete = struct {
 const PostCreate = struct {
     pub const path = "/users/:userId/posts";
     pub const method = zenerator.Method.POST;
+    pub const tags = .{ "users", "posts" };
     pub const Request = struct {
         pub const Params = struct {
             userId: u32,
