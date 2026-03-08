@@ -123,6 +123,7 @@ pub const Types = enum {
             u64,
             f32,
             f64,
+            ?u8,
             ?i16,
             ?u16,
             ?i32,
