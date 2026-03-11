@@ -13,6 +13,7 @@ const ErrorResponse = struct {
 const SystemHealth = struct {
     pub const path = "/health";
     pub const method = zenerator.Method.GET;
+    pub const tags = .{"system"};
     pub const Request = struct {
         pub const Params = struct {};
         pub const Query = struct {};
