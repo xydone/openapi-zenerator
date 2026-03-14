@@ -1,6 +1,7 @@
 const Schema = @This();
 
 title: ?[]const u8 = null,
+summary: ?[]const u8 = null,
 default: ?[]const u8 = null,
 multipleOf: ?f64 = null,
 maximum: ?f64 = null,

@@ -147,12 +147,32 @@ pub fn generate(alloc: std.mem.Allocator, comptime endpoint_data: anytype, optio
                 try tag_list.append(allocator, "default");
             }
 
+            const summary = comptime blk: {
+                if (is_type) {
+                    if (@hasDecl(endpoint, "summary")) break :blk endpoint.summary;
+                } else {
+                    if (@hasField(@TypeOf(endpoint), "summary")) break :blk endpoint.summary;
+                }
+                break :blk null;
+            };
+
+            const description = comptime blk: {
+                if (is_type) {
+                    if (@hasDecl(endpoint, "description")) break :blk endpoint.description;
+                } else {
+                    if (@hasField(@TypeOf(endpoint), "description")) break :blk endpoint.description;
+                }
+                break :blk null;
+            };
+
             try insertParameter(.{
                 .path = formatted_path,
                 .method = method,
                 .params = try parameters.toOwnedSlice(allocator),
                 .request_body = request_body,
                 .tags = try tag_list.toOwnedSlice(allocator),
+                .summary = summary,
+                .description = description,
             }, endpoint.Response, allocator, &path_map);
         }
     }
@@ -187,6 +207,8 @@ fn insertParameter(
         params: ?[]Path.Operation.Parameter = null,
         request_body: ?Path.Operation.RequestBody = null,
         tags: []const []const u8,
+        summary: ?[]const u8,
+        description: ?[]const u8,
     },
     ResponseT: type,
     allocator: std.mem.Allocator,
@@ -250,6 +272,8 @@ fn insertParameter(
         .requestBody = if (route_info.request_body) |rb| rb else null,
         .responses = responses,
         .tags = tags,
+        .summary = route_info.summary,
+        .description = route_info.description,
     };
 
     const gop = try map.getOrPut(route_info.path);
